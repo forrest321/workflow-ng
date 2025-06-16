@@ -48,44 +48,173 @@ claude-heartbeat() {
 }
 ```
 
-#### Target Implementation (Redis-Based)
+#### Target Implementation (Redis-Based with Enhanced Recovery)
 ```python
 import redis
 import json
 import time
+import subprocess
 from typing import Optional
 
 class DistributedWorkClaimer:
     def __init__(self, redis_url: str, agent_id: str):
-        self.redis = redis.from_url(redis_url)
+        self.redis_url = redis_url
         self.agent_id = agent_id
         self.claim_ttl = 300  # 5 minutes
+        self.redis = self._ensure_redis_connection()
+    
+    def _ensure_redis_connection(self, allow_fallback: bool = False) -> redis.Redis:
+        """Ensure Redis is available, attempt auto-start if needed"""
+        try:
+            redis_client = redis.from_url(self.redis_url)
+            redis_client.ping()
+            return redis_client
+        except (redis.ConnectionError, redis.TimeoutError):
+            # Attempt to start coordination services
+            if allow_fallback:
+                result = subprocess.run([
+                    "./scripts/service-manager.sh", "start-with-fallback", self.redis_url
+                ], capture_output=True, text=True)
+            else:
+                result = subprocess.run([
+                    "./scripts/service-manager.sh", "start", self.redis_url
+                ], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                # Retry connection after startup
+                redis_client = redis.from_url(self.redis_url)
+                redis_client.ping()
+                return redis_client
+            elif result.returncode == 2 and allow_fallback:
+                # User accepted file-based fallback
+                raise FallbackModeException("Operating in file-based coordination mode")
+            else:
+                raise RuntimeError(f"Redis unavailable and auto-start failed: {result.stderr}")
+
+class FallbackModeException(Exception):
+    """Exception raised when operating in file-based fallback mode"""
+    pass
+
+class CoordinationManager:
+    """High-level coordination manager that handles both Redis and file-based modes"""
+    
+    def __init__(self, redis_url: str, agent_id: str, allow_fallback: bool = False):
+        self.redis_url = redis_url
+        self.agent_id = agent_id
+        self.allow_fallback = allow_fallback
+        self.mode = "unknown"
+        self.claimer = None
+        
+        self._initialize_coordination()
+    
+    def _initialize_coordination(self):
+        """Initialize coordination system with appropriate mode"""
+        try:
+            self.claimer = DistributedWorkClaimer(self.redis_url, self.agent_id, self.allow_fallback)
+            self.mode = "redis"
+            print(f"✅ Redis coordination mode active for agent {self.agent_id}")
+        except FallbackModeException:
+            self.claimer = FileBasedWorkClaimer(self.agent_id)
+            self.mode = "file"
+            print(f"⚠️  File-based coordination mode active for agent {self.agent_id}")
+            print("   Limited functionality - no real-time coordination available")
+        except Exception as e:
+            if self.allow_fallback:
+                self.claimer = FileBasedWorkClaimer(self.agent_id)
+                self.mode = "file"
+                print(f"⚠️  Falling back to file-based coordination: {e}")
+            else:
+                raise RuntimeError(f"Coordination initialization failed: {e}")
     
     def claim_task(self, task_id: str) -> bool:
-        """Atomically claim a task with TTL"""
-        claim_key = f"task:claim:{task_id}"
-        claim_data = {
-            "agent_id": self.agent_id,
-            "claimed_at": time.time(),
-            "ttl": self.claim_ttl
-        }
-        
-        # Use SET with NX (only if not exists) and EX (expiry)
-        success = self.redis.set(
-            claim_key,
-            json.dumps(claim_data),
-            nx=True,
-            ex=self.claim_ttl
-        )
-        
-        if success:
-            # Add to agent's active tasks
-            self.redis.sadd(f"agent:tasks:{self.agent_id}", task_id)
-            return True
-        return False
+        """Claim a task using the appropriate coordination method"""
+        return self.claimer.claim_task(task_id)
     
-    def extend_claim(self, task_id: str) -> bool:
-        """Extend claim if owned by this agent"""
+    def is_redis_mode(self) -> bool:
+        """Check if operating in Redis coordination mode"""
+        return self.mode == "redis"
+    
+    def get_coordination_mode(self) -> str:
+        """Get current coordination mode"""
+        return self.mode
+
+class FileBasedWorkClaimer:
+    """Fallback file-based work claiming for when Redis is unavailable"""
+    
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+        self.claim_dir = "./work-claims"
+        os.makedirs(self.claim_dir, exist_ok=True)
+    
+    def claim_task(self, task_id: str) -> bool:
+        """Atomically claim a task using file-based locking"""
+        claim_file = os.path.join(self.claim_dir, f"{task_id}.claim")
+        
+        try:
+            # Atomic file creation with exclusive flag
+            with open(claim_file, 'x') as f:
+                claim_data = {
+                    "agent_id": self.agent_id,
+                    "claimed_at": time.time(),
+                    "mode": "file_based",
+                    "warning": "Limited coordination - check for conflicts"
+                }
+                json.dump(claim_data, f, indent=2)
+            return True
+        except FileExistsError:
+            return False
+
+# Usage Examples
+
+## Basic Coordination (Redis Required)
+```python
+coordinator = CoordinationManager("redis://localhost:6379", "claude-agent-1")
+if coordinator.claim_task("task-123"):
+    print("Task claimed successfully")
+    # Perform work...
+```
+
+## Coordination with Fallback Option
+```python
+coordinator = CoordinationManager(
+    "redis://localhost:6379", 
+    "claude-agent-1", 
+    allow_fallback=True
+)
+
+if coordinator.claim_task("task-123"):
+    if coordinator.is_redis_mode():
+        print("Task claimed via Redis coordination")
+    else:
+        print("Task claimed via file-based coordination (limited functionality)")
+    # Perform work...
+```
+
+## Command Line Usage
+
+### Start with Redis Required (Default)
+```bash
+# Will fail if Redis/Docker cannot be started
+./scripts/workflow-coordinator.sh start
+```
+
+### Start with Fallback Option
+```bash
+# Will prompt user if Redis unavailable
+./scripts/workflow-coordinator.sh start-with-fallback
+```
+
+### Service Management
+```bash
+# Check current status
+./scripts/workflow-coordinator.sh status
+
+# Manual service startup with fallback
+./scripts/service-manager.sh start-with-fallback
+
+# Work recovery only
+./scripts/work-recovery.sh cycle
+```
         claim_key = f"task:claim:{task_id}"
         claim_data = self.redis.get(claim_key)
         
@@ -94,6 +223,36 @@ class DistributedWorkClaimer:
             if claim["agent_id"] == self.agent_id:
                 claim["claimed_at"] = time.time()
                 self.redis.set(claim_key, json.dumps(claim), ex=self.claim_ttl)
+                # Update heartbeat
+                self.redis.set(f"agent:heartbeat:{self.agent_id}", time.time(), ex=60)
+                return True
+        return False
+    
+    def fail_task_early(self, task_id: str, error: str) -> bool:
+        """Mark task as failed in early stage for potential recovery"""
+        claim_key = f"task:claim:{task_id}"
+        claim_data = self.redis.get(claim_key)
+        
+        if claim_data:
+            claim = json.loads(claim_data)
+            if claim["agent_id"] == self.agent_id and claim["recovery_metadata"]["early_failure_recoverable"]:
+                # Mark for recovery instead of permanent failure
+                recovery_data = {
+                    "task_id": task_id,
+                    "original_agent": self.agent_id,
+                    "failure_reason": error,
+                    "failed_at": time.time(),
+                    "recovery_eligible": True,
+                    "retry_after": time.time() + 60  # 1 minute delay
+                }
+                
+                # Add to recovery queue
+                self.redis.lpush("work:recovery:early_failure", json.dumps(recovery_data))
+                
+                # Clean up original claim
+                self.redis.delete(claim_key)
+                self.redis.srem(f"agent:tasks:{self.agent_id}", task_id)
+                
                 return True
         return False
     

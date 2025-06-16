@@ -40,17 +40,27 @@
 
 ## Implementation Guidelines
 
+### Enhanced Service Dependency Management
+- **Auto-Start Infrastructure**: First worker detects missing Redis/Docker and attempts startup
+- **User-Controlled Fallback**: Fall back to file-based coordination only with explicit user consent
+- **Health Monitoring**: Continuous service health checks with automatic recovery
+- **Clear User Guidance**: Detailed error messages and fallback options when manual intervention required
+
 ### For File-Based Systems (Current)
 - Implement file locking with timeout mechanisms
 - Use atomic operations for claim updates
 - Add timestamp validation for claim expiry
+- **Orphaned Work Recovery**: Periodic scan for abandoned work with automatic reassignment
 
 ### For Distributed Systems (Target)
 - Redis-based work queues with pub/sub notifications
 - Consistent hashing for work distribution
 - Circuit breakers for failed worker detection
+- **Orphan Detection**: Redis-based monitoring for stale claims with automatic cleanup
 
 ### Risk Mitigation
 - Sandbox tool access for security
 - Audit trails for work assignment and completion
 - Rollback mechanisms for failed operations
+- **Work Resurrection**: Failed early-stage work automatically returned to queue
+- **Failure Classification**: Distinguish between recoverable and non-recoverable failures
