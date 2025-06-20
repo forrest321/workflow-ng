@@ -117,7 +117,7 @@ detect_project_technologies() {
     [ -f "$project_path/vite.config.js" ] && technologies+=("vite")
     [ -f "$project_path/webpack.config.js" ] && technologies+=("webpack")
     
-    printf '%s\n' "${technologies[@]}" | sort -u
+    printf '%s\n' "${technologies[@]:-}" | sort -u
 }
 
 get_architecture_guidance() {

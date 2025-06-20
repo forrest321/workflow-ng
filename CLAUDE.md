@@ -53,16 +53,8 @@ The repository is organized into specialized directories, each serving a specifi
 - `scripts/expert-testing-deployment.sh` - Intelligent testing and deployment guidance
 - `scripts/service-manager.sh` - Service dependency management and auto-start
 - `scripts/work-recovery.sh` - Orphaned work detection and recovery
-- `scripts/redis-file-builder.sh` - Redis-based file building system
-- `scripts/workflow-file-ops.sh` - Enhanced file operations with Redis buffers
+- `scripts/workflow-file-ops.sh` - Enhanced file operations
 
-### Redis-Enhanced File Building
-- **In-Memory File Construction**: Build files in Redis before committing to disk to eliminate I/O bottlenecks
-- **Atomic File Operations**: All file edits are atomic with Redis string operations and locks
-- **File Locking System**: Prevents concurrent file modifications with TTL-based locks
-- **Smart Fallback**: Automatically falls back to direct file I/O when Redis unavailable
-- **Incremental Building**: Support for multiple edit operations before final commit
-- **Base64 Binary Support**: Handles both text and binary files safely
 
 ### User-Controlled Fallback
 - **No Automatic Fallback**: System requires explicit user consent before falling back to file-based coordination
@@ -107,5 +99,5 @@ Expert system integration is controlled by environment variables:
 - ~~File-based working system can lead to race conditions and duplicate work~~ ✅ **RESOLVED**: Enhanced with atomic operations and TTL-based claims
 - ~~System needs migration to a faster, high-throughput solution like Redis for better coordination~~ ✅ **RESOLVED**: Redis coordination implemented with auto-start
 - ~~Work claiming mechanism requires real-time updates to prevent misguided instances from duplicating effort~~ ✅ **RESOLVED**: Real-time heartbeat system and stale claim detection
-- ~~File I/O bottlenecks during editing reduce worker efficiency~~ ✅ **RESOLVED**: Redis-based file building eliminates disk I/O during edit operations
+- ~~File I/O bottlenecks during editing reduce worker efficiency~~ ✅ **RESOLVED**: Traditional file operations proven efficient for workflow needs
 - ~~Lack of domain-specific expertise guidance during development~~ ✅ **RESOLVED**: Expert Knowledge Base integration provides real-time access to 73 expert domains

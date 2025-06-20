@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
-# Workflow File Operations Integration
-# High-level file operations that use Redis-based building when available
+# Workflow File Operations 
+# High-level file operations for workflow coordination
 
 set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
-
-# Import Redis file builder
-source "$SCRIPT_DIR/redis-file-builder.sh"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -36,184 +32,91 @@ info() {
     echo -e "${BLUE}[INFO]${NC} $*"
 }
 
-# Check if we should use Redis-based file operations
-should_use_redis_ops() {
-    if check_redis_available; then
-        return 0
-    else
-        warn "Redis not available, falling back to direct file operations"
-        return 1
-    fi
-}
-
-# Smart file append - uses Redis when available, direct I/O as fallback
-smart_file_append() {
+# Atomic file append
+atomic_file_append() {
     local file_path="$1"
     local content="$2"
     
-    if should_use_redis_ops; then
-        info "Using Redis-based append for: $file_path"
-        edit_file_workflow "$file_path" "append" "$content"
-    else
-        info "Using direct file append for: $file_path"
-        # Ensure directory exists
-        local dir_path
-        dir_path=$(dirname "$file_path")
-        mkdir -p "$dir_path"
-        
-        # Direct append
-        echo -n "$content" >> "$file_path"
-    fi
+    # Ensure directory exists
+    local dir_path
+    dir_path=$(dirname "$file_path")
+    mkdir -p "$dir_path"
+    
+    # Direct append (efficient for workflow needs)
+    printf "%s" "$content" >> "$file_path"
 }
 
-# Smart file replace - uses Redis when available, direct I/O as fallback
-smart_file_replace() {
+# Atomic file replace using sed
+atomic_file_replace() {
     local file_path="$1"
     local old_pattern="$2"
     local new_content="$3"
     
-    if should_use_redis_ops; then
-        info "Using Redis-based replace for: $file_path"
-        edit_file_workflow "$file_path" "replace" "$old_pattern" "$new_content"
+    # Ensure file exists
+    if [ ! -f "$file_path" ]; then
+        mkdir -p "$(dirname "$file_path")"
+        touch "$file_path"
+    fi
+    
+    # Use sed for replacement (cross-platform)
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        sed -i '' "s|$old_pattern|$new_content|g" "$file_path"
     else
-        info "Using direct file replace for: $file_path"
-        # Ensure file exists
-        if [ ! -f "$file_path" ]; then
-            mkdir -p "$(dirname "$file_path")"
-            touch "$file_path"
-        fi
-        
-        # Use sed for replacement
-        if [[ "$(uname -s)" == "Darwin" ]]; then
-            sed -i '' "s|$old_pattern|$new_content|g" "$file_path"
-        else
-            sed -i "s|$old_pattern|$new_content|g" "$file_path"
-        fi
+        sed -i "s|$old_pattern|$new_content|g" "$file_path"
     fi
 }
 
-# Smart file write - builds content and writes atomically
-smart_file_write() {
+# Atomic file write using temporary file
+atomic_file_write() {
     local file_path="$1"
     local content="$2"
     
-    if should_use_redis_ops; then
-        info "Using Redis-based write for: $file_path"
-        # Clear any existing content and write new content
-        local session_id
-        session_id=$(generate_session_id)
-        
-        if acquire_file_lock "$file_path" "$session_id"; then
-            # Initialize empty buffer
-            local buffer_key
-            buffer_key=$(init_file_buffer "$file_path" "$session_id")
-            
-            # Clear buffer and add new content
-            redis-cli -u "$REDIS_URL" SET "$buffer_key" "" EX $BUFFER_TTL >/dev/null 2>&1
-            append_to_buffer "$buffer_key" "$content" "$session_id" "$file_path"
-            
-            # Commit to disk
-            if commit_buffer_to_disk "$buffer_key" "$session_id" "$file_path"; then
-                log "Redis-based write completed: $file_path"
-            else
-                error "Redis-based write failed: $file_path"
-            fi
-            
-            cleanup_buffer "$buffer_key" "$session_id" "$file_path"
-        else
-            error "Could not acquire lock for Redis-based write: $file_path"
-            return 1
-        fi
-    else
-        info "Using direct file write for: $file_path"
-        # Ensure directory exists
-        local dir_path
-        dir_path=$(dirname "$file_path")
-        mkdir -p "$dir_path"
-        
-        # Atomic write using temporary file
-        local temp_file="${file_path}.tmp.$$"
-        echo -n "$content" > "$temp_file"
-        mv "$temp_file" "$file_path"
-    fi
+    # Ensure directory exists
+    local dir_path
+    dir_path=$(dirname "$file_path")
+    mkdir -p "$dir_path"
+    
+    # Atomic write using temporary file
+    local temp_file="${file_path}.tmp.$$"
+    printf "%s" "$content" > "$temp_file"
+    mv "$temp_file" "$file_path"
 }
 
-# Build file incrementally with multiple operations
+# Build file with multiple operations (applied sequentially)
 build_file_incrementally() {
     local file_path="$1"
     shift
     local operations=("$@")
     
-    if should_use_redis_ops; then
-        info "Building file incrementally with Redis: $file_path"
-        local session_id
-        session_id=$(generate_session_id)
+    info "Building file incrementally: $file_path"
+    
+    # Process operations sequentially
+    local op_count=0
+    for operation in "${operations[@]}"; do
+        ((op_count++))
+        info "Applying operation $op_count: $operation"
         
-        if ! acquire_file_lock "$file_path" "$session_id"; then
-            error "Could not acquire lock for incremental build: $file_path"
-            return 1
-        fi
+        # Parse operation (format: "operation:arg1:arg2:...")
+        IFS=':' read -ra op_parts <<< "$operation"
+        local op_type="${op_parts[0]}"
         
-        # Initialize buffer
-        local buffer_key
-        buffer_key=$(init_file_buffer "$file_path" "$session_id")
-        
-        # Process operations
-        local op_count=0
-        for operation in "${operations[@]}"; do
-            ((op_count++))
-            info "Applying operation $op_count: $operation"
-            
-            # Parse operation (format: "operation:arg1:arg2:...")
-            IFS=':' read -ra op_parts <<< "$operation"
-            local op_type="${op_parts[0]}"
-            
-            case "$op_type" in
-                "append")
-                    append_to_buffer "$buffer_key" "${op_parts[1]}" "$session_id" "$file_path"
-                    ;;
-                "replace")
-                    replace_in_buffer "$buffer_key" "${op_parts[1]}" "${op_parts[2]}" "$session_id" "$file_path"
-                    ;;
-                "insert")
-                    insert_at_position "$buffer_key" "${op_parts[1]}" "${op_parts[2]}" "$session_id" "$file_path"
-                    ;;
-                *)
-                    warn "Unknown operation type: $op_type"
-                    ;;
-            esac
-        done
-        
-        # Commit all changes at once
-        if commit_buffer_to_disk "$buffer_key" "$session_id" "$file_path"; then
-            log "Incremental file build completed: $file_path ($op_count operations)"
-        else
-            error "Failed to commit incremental build: $file_path"
-        fi
-        
-        cleanup_buffer "$buffer_key" "$session_id" "$file_path"
-    else
-        warn "Redis not available, applying operations directly (less efficient)"
-        for operation in "${operations[@]}"; do
-            IFS=':' read -ra op_parts <<< "$operation"
-            local op_type="${op_parts[0]}"
-            
-            case "$op_type" in
-                "append")
-                    smart_file_append "$file_path" "${op_parts[1]}"
-                    ;;
-                "replace")
-                    smart_file_replace "$file_path" "${op_parts[1]}" "${op_parts[2]}"
-                    ;;
-                *)
-                    warn "Operation $op_type not supported in fallback mode"
-                    ;;
-            esac
-        done
-    fi
+        case "$op_type" in
+            "append")
+                atomic_file_append "$file_path" "${op_parts[1]}"
+                ;;
+            "replace")
+                atomic_file_replace "$file_path" "${op_parts[1]}" "${op_parts[2]}"
+                ;;
+            *)
+                warn "Unknown operation type: $op_type"
+                ;;
+        esac
+    done
+    
+    log "Incremental file build completed: $file_path ($op_count operations)"
 }
 
-# Create work claim file using Redis building
+# Create work claim file
 create_work_claim() {
     local task_id="$1"
     local agent_id="$2"
@@ -221,10 +124,10 @@ create_work_claim() {
     local claim_file="$PROJECT_ROOT/work-claims/${task_id}.json"
     
     info "Creating work claim: $task_id"
-    smart_file_write "$claim_file" "$claim_data"
+    atomic_file_write "$claim_file" "$claim_data"
 }
 
-# Update work status using Redis building
+# Update work status
 update_work_status() {
     local task_id="$1"
     local new_status="$2"
@@ -238,7 +141,7 @@ update_work_status() {
     
     info "Updating work status: $task_id -> $new_status"
     
-    # Use jq to update the JSON, then write back
+    # Use jq to update the JSON, then write back atomically
     local updated_content
     if [ -n "$additional_data" ]; then
         updated_content=$(jq '. + {"status": "'$new_status'", "last_updated": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' "$claim_file" | jq ". + $additional_data")
@@ -246,10 +149,10 @@ update_work_status() {
         updated_content=$(jq '. + {"status": "'$new_status'", "last_updated": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' "$claim_file")
     fi
     
-    smart_file_write "$claim_file" "$updated_content"
+    atomic_file_write "$claim_file" "$updated_content"
 }
 
-# Build task result file incrementally
+# Build task result file
 build_task_result() {
     local task_id="$1"
     local result_file="$PROJECT_ROOT/task-results/${task_id}.json"
@@ -268,7 +171,7 @@ build_task_result() {
 EOF
 )
     
-    smart_file_write "$result_file" "$initial_content"
+    atomic_file_write "$result_file" "$initial_content"
     echo "$result_file"
 }
 
@@ -277,34 +180,12 @@ add_task_result() {
     local result_file="$1"
     local result_data="$2"
     
-    if should_use_redis_ops; then
-        info "Adding result using Redis operations"
-        # Use jq to add to results array, but do it in Redis
-        local session_id
-        session_id=$(generate_session_id)
-        
-        if acquire_file_lock "$result_file" "$session_id"; then
-            local buffer_key
-            buffer_key=$(init_file_buffer "$result_file" "$session_id")
-            
-            # Get current content, modify with jq, and replace
-            local current_content
-            current_content=$(get_buffer_content "$buffer_key" "$session_id" "$result_file")
-            local updated_content
-            updated_content=$(echo "$current_content" | jq ".results += [$result_data]")
-            
-            # Replace entire buffer content
-            redis-cli -u "$REDIS_URL" SET "$buffer_key" "$updated_content" EX $BUFFER_TTL >/dev/null 2>&1
-            
-            commit_buffer_to_disk "$buffer_key" "$session_id" "$result_file"
-            cleanup_buffer "$buffer_key" "$session_id" "$result_file"
-        fi
-    else
-        # Direct file operation
-        local temp_file="${result_file}.tmp.$$"
-        jq ".results += [$result_data]" "$result_file" > "$temp_file"
-        mv "$temp_file" "$result_file"
-    fi
+    info "Adding result to task file"
+    
+    # Use jq to add to results array atomically
+    local temp_file="${result_file}.tmp.$$"
+    jq ".results += [$result_data]" "$result_file" > "$temp_file"
+    mv "$temp_file" "$result_file"
 }
 
 # Complete task result file
@@ -313,7 +194,7 @@ complete_task_result() {
     local final_status="$2"
     
     info "Completing task result: $final_status"
-    smart_file_replace "$result_file" '"status": "building"' "\"status\": \"$final_status\", \"completed_at\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\""
+    atomic_file_replace "$result_file" '"status": "building"' "\"status\": \"$final_status\", \"completed_at\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\""
 }
 
 # Batch file operations for efficiency
@@ -339,13 +220,13 @@ batch_file_operations() {
         
         case "$op_type" in
             "append")
-                smart_file_append "$file_path" "${op_parts[2]}"
+                atomic_file_append "$file_path" "${op_parts[2]}"
                 ;;
             "replace")
-                smart_file_replace "$file_path" "${op_parts[2]}" "${op_parts[3]}"
+                atomic_file_replace "$file_path" "${op_parts[2]}" "${op_parts[3]}"
                 ;;
             "write")
-                smart_file_write "$file_path" "${op_parts[2]}"
+                atomic_file_write "$file_path" "${op_parts[2]}"
                 ;;
             "incremental")
                 # Incremental build with multiple operations
@@ -365,13 +246,13 @@ batch_file_operations() {
 main() {
     case "${1:-help}" in
         "append")
-            smart_file_append "$2" "$3"
+            atomic_file_append "$2" "$3"
             ;;
         "replace")
-            smart_file_replace "$2" "$3" "$4"
+            atomic_file_replace "$2" "$3" "$4"
             ;;
         "write")
-            smart_file_write "$2" "$3"
+            atomic_file_write "$2" "$3"
             ;;
         "incremental")
             local file_path="$2"
@@ -406,9 +287,9 @@ main() {
             # Test incremental build
             build_file_incrementally "$test_dir/test.txt" \
                 "append:Hello " \
-                "append:Redis " \
-                "append:file building!\n" \
-                "replace:Redis:enhanced Redis"
+                "append:workflow " \
+                "append:file operations!\n" \
+                "replace:workflow:enhanced workflow"
             
             info "Test file content:"
             cat "$test_dir/test.txt"
@@ -428,14 +309,14 @@ main() {
             rm -f "$PROJECT_ROOT/work-claims/test-123.json"
             ;;
         "help"|"-h"|"--help")
-            echo "Workflow File Operations - Redis-enhanced file building"
+            echo "Workflow File Operations - Traditional file operations"
             echo ""
             echo "Usage: $0 [command] [options]"
             echo ""
             echo "Commands:"
-            echo "  append <file> <content>           Smart append operation"
-            echo "  replace <file> <old> <new>        Smart replace operation"
-            echo "  write <file> <content>            Smart write operation"
+            echo "  append <file> <content>           Atomic append operation"
+            echo "  replace <file> <old> <new>        Atomic replace operation"
+            echo "  write <file> <content>            Atomic write operation"
             echo "  incremental <file> <ops...>       Build file with multiple operations"
             echo "  claim <task_id> <agent> <data>    Create work claim"
             echo "  status <task_id> <status> [data]  Update work status"
@@ -449,16 +330,12 @@ main() {
             echo "Operation Formats (for incremental):"
             echo "  append:content                    Append content"
             echo "  replace:old:new                   Replace text"
-            echo "  insert:position:content           Insert at position"
             echo ""
-            echo "Benefits of Redis-enhanced operations:"
-            echo "  - Eliminates file I/O bottlenecks during editing"
-            echo "  - Atomic commits reduce race conditions"
-            echo "  - File locking prevents concurrent modification"
-            echo "  - Fallback to direct I/O when Redis unavailable"
-            echo ""
-            echo "Environment Variables:"
-            echo "  REDIS_URL                         Redis connection URL (default: redis://localhost:6379)"
+            echo "Features:"
+            echo "  - Atomic file operations prevent corruption"
+            echo "  - Cross-platform compatibility"
+            echo "  - Efficient traditional file I/O"
+            echo "  - Sequential operation support"
             exit 0
             ;;
         *)

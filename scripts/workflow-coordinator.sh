@@ -467,10 +467,10 @@ main() {
             "$SCRIPT_DIR/work-recovery.sh" cycle
             ;;
         "file-buffers")
-            "$SCRIPT_DIR/redis-file-builder.sh" list
+            warn "Redis file building system removed - no file buffers to list"
             ;;
         "cleanup-buffers")
-            "$SCRIPT_DIR/redis-file-builder.sh" cleanup
+            warn "Redis file building system removed - no file buffers to clean"
             ;;
         "test-file-ops")
             "$SCRIPT_DIR/workflow-file-ops.sh" test

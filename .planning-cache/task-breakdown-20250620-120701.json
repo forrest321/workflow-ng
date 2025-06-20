@@ -1,0 +1,17 @@
+{
+    "project_description": "Flutter skateboarding game with Fiber backend monetization mobile web 2D side-scrolling",
+    "detected_technologies": "[0;34m[INFO][0m Detecting project technologies in /Users/fo/Documents/code/workflow-ng  ",
+    "planning_timestamp": "2025-06-20T16:07:01Z",
+    "expert_guidance": {
+        "architecture": [],
+        "implementation": [],
+        "testing": [],
+        "deployment": []
+    },
+    "task_breakdown": {
+        "planning_phase": [],
+        "implementation_phase": [],
+        "testing_phase": [],
+        "deployment_phase": []
+    }
+}
