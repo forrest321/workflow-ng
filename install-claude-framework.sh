@@ -246,11 +246,20 @@ main() {
     create_dir "$TARGET_DIR/.claude/terminology"
     create_dir "$TARGET_DIR/.claude/api"
     
-    # Copy essential files
+    # Copy essential files to .claude directory (DO NOT overwrite project root CLAUDE.md)
     log "Installing framework files..."
-    copy_file "$SCRIPT_DIR/CLAUDE.md" "$TARGET_DIR/CLAUDE.md" "CLAUDE.md"
+    copy_file "$SCRIPT_DIR/CLAUDE.md" "$TARGET_DIR/.claude/CLAUDE.md" "CLAUDE.md (to .claude directory)"
     copy_file "$SCRIPT_DIR/CLAUDE_COORDINATION_PLAN.md" "$TARGET_DIR/.claude/CLAUDE_COORDINATION_PLAN.md" "Coordination Plan"
     copy_file "$SCRIPT_DIR/IMPLEMENTATION_GUIDE.md" "$TARGET_DIR/.claude/IMPLEMENTATION_GUIDE.md" "Implementation Guide"
+    
+    # Safe CLAUDE.md integration
+    log "Handling CLAUDE.md integration..."
+    if [[ -f "$SCRIPT_DIR/scripts/claude-md-integration.sh" ]]; then
+        "$SCRIPT_DIR/scripts/claude-md-integration.sh" auto "$TARGET_DIR" safe
+    else
+        warn "CLAUDE.md integration script not found - skipping root CLAUDE.md modification"
+        warn "Framework documentation available in .claude/README.md"
+    fi
     
     # Copy directories
     log "Installing framework directories..."
@@ -266,11 +275,15 @@ main() {
         copy_file "$SCRIPT_DIR/scripts/service-manager.sh" "$TARGET_DIR/.claude/scripts/service-manager.sh" "Service Manager"
         copy_file "$SCRIPT_DIR/scripts/work-recovery.sh" "$TARGET_DIR/.claude/scripts/work-recovery.sh" "Work Recovery System"
         copy_file "$SCRIPT_DIR/scripts/workflow-coordinator.sh" "$TARGET_DIR/.claude/scripts/workflow-coordinator.sh" "Workflow Coordinator"
+        copy_file "$SCRIPT_DIR/scripts/redis-file-builder.sh" "$TARGET_DIR/.claude/scripts/redis-file-builder.sh" "Redis File Builder"
+        copy_file "$SCRIPT_DIR/scripts/workflow-file-ops.sh" "$TARGET_DIR/.claude/scripts/workflow-file-ops.sh" "Workflow File Operations"
+        copy_file "$SCRIPT_DIR/scripts/expert-enhanced-planner.sh" "$TARGET_DIR/.claude/scripts/expert-enhanced-planner.sh" "Expert-Enhanced Planner"
+        copy_file "$SCRIPT_DIR/scripts/expert-guided-implementation.sh" "$TARGET_DIR/.claude/scripts/expert-guided-implementation.sh" "Expert-Guided Implementation"
+        copy_file "$SCRIPT_DIR/scripts/expert-testing-deployment.sh" "$TARGET_DIR/.claude/scripts/expert-testing-deployment.sh" "Expert Testing & Deployment"
+        copy_file "$SCRIPT_DIR/scripts/claude-md-integration.sh" "$TARGET_DIR/.claude/scripts/claude-md-integration.sh" "CLAUDE.md Integration Helper"
         
         # Make scripts executable
-        chmod +x "$TARGET_DIR/.claude/scripts/service-manager.sh"
-        chmod +x "$TARGET_DIR/.claude/scripts/work-recovery.sh"
-        chmod +x "$TARGET_DIR/.claude/scripts/workflow-coordinator.sh"
+        chmod +x "$TARGET_DIR/.claude/scripts"/*.sh
     fi
     
     # Copy optional directories if they exist
@@ -329,21 +342,33 @@ main() {
         info "Agent ID: $AGENT_ID"
         info "Project Type: $PROJECT_TYPE"
         echo ""
+        success "🔒 CLAUDE.md Protection: Existing CLAUDE.md files are preserved!"
+        info "   - Framework content stored in .claude/CLAUDE.md"  
+        info "   - Project root CLAUDE.md left untouched for /init compatibility"
+        echo ""
         info "Next steps:"
         info "1. cd $TARGET_DIR"
         info "2. source .claude/scripts/activate.sh"
         info "3. claude-status"
         echo ""
-        info "For enhanced coordination (recommended):"
+        info "For enhanced coordination with Expert system (recommended):"
         info "4. claude-coordinator start-with-fallback"
         echo ""
         info "Or manual Redis coordination:"
         info "4. docker-compose -f docker-compose.coordination.yml up -d"
         echo ""
         info "Enhanced commands available after activation:"
-        info "  claude-coordinator - Workflow coordination daemon"
+        info "  claude-coordinator - Workflow coordination daemon with Expert integration"
         info "  claude-services    - Service management"
         info "  claude-recovery    - Work recovery system"
+        echo ""
+        info "Expert Knowledge Base commands:"
+        info "  .claude/scripts/expert-enhanced-planner.sh - AI-powered project planning"
+        info "  .claude/scripts/expert-guided-implementation.sh - Development assistance"
+        info "  .claude/scripts/expert-testing-deployment.sh - Testing and deployment guidance"
+        echo ""
+        info "To optionally integrate framework content into your CLAUDE.md:"
+        info "  .claude/scripts/claude-md-integration.sh integrate"
         echo ""
         info "See .claude/README.md for detailed usage"
         echo ""
@@ -1274,7 +1299,7 @@ verify_installation() {
     
     # Check essential files
     local essential_files=(
-        "$TARGET_DIR/CLAUDE.md"
+        "$TARGET_DIR/.claude/CLAUDE.md"
         "$TARGET_DIR/.claude/agent_id"
         "$TARGET_DIR/.claude/README.md"
         "$TARGET_DIR/.claude/scripts/activate.sh"

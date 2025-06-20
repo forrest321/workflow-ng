@@ -11,6 +11,13 @@ REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
 COORDINATOR_PID_FILE="$PROJECT_ROOT/.workflow-coordinator.pid"
 RECOVERY_INTERVAL="${RECOVERY_INTERVAL:-300}"  # 5 minutes
 
+# Expert Knowledge Base Configuration
+EXPERT_SYSTEM_URL="${EXPERT_SYSTEM_URL:-http://localhost:8080}"
+EXPERT_SYSTEM_ENABLED="${EXPERT_SYSTEM_ENABLED:-true}"
+
+# Import enhanced file operations
+source "$SCRIPT_DIR/workflow-file-ops.sh"
+
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -33,6 +40,98 @@ warn() {
 
 info() {
     echo -e "${BLUE}[INFO]${NC} $*"
+}
+
+# Expert Knowledge Base functions
+check_expert_system() {
+    if [ "$EXPERT_SYSTEM_ENABLED" != "true" ]; then
+        return 1
+    fi
+    
+    local health_response
+    health_response=$(curl -s --connect-timeout 5 "$EXPERT_SYSTEM_URL/health" 2>/dev/null) || return 1
+    
+    if echo "$health_response" | grep -q '"status":"healthy"'; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+query_expert_system() {
+    local query="$1"
+    local domain="${2:-}"
+    local top_k="${3:-5}"
+    
+    if ! check_expert_system; then
+        warn "Expert system unavailable - proceeding without knowledge base"
+        return 1
+    fi
+    
+    local payload
+    if [ -n "$domain" ]; then
+        payload=$(cat <<EOF
+{
+    "query": "$query",
+    "top_k": $top_k,
+    "filters": {
+        "expert": "$domain"
+    }
+}
+EOF
+        )
+    else
+        payload=$(cat <<EOF
+{
+    "query": "$query",
+    "top_k": $top_k
+}
+EOF
+        )
+    fi
+    
+    curl -s -X POST "$EXPERT_SYSTEM_URL/api/v1/search" \
+        -H "Content-Type: application/json" \
+        -d "$payload" 2>/dev/null || return 1
+}
+
+get_coordination_guidance() {
+    local task_type="$1"
+    local technology="${2:-}"
+    
+    local query="best practices for $task_type coordination workflow automation"
+    if [ -n "$technology" ]; then
+        query="$query with $technology"
+    fi
+    
+    info "Consulting Expert Knowledge Base for coordination guidance..."
+    local guidance
+    guidance=$(query_expert_system "$query" "project-management-expert" 3)
+    
+    if [ $? -eq 0 ] && [ -n "$guidance" ]; then
+        log "Expert guidance obtained for $task_type coordination"
+        echo "$guidance" | jq -r '.results[]?.content' 2>/dev/null | head -n 5
+    else
+        warn "No expert guidance available for $task_type"
+    fi
+}
+
+get_technology_best_practices() {
+    local technology="$1"
+    local context="${2:-development}"
+    
+    local query="$technology $context best practices patterns optimization"
+    
+    info "Querying Expert Knowledge Base for $technology best practices..."
+    local practices
+    practices=$(query_expert_system "$query" "" 5)
+    
+    if [ $? -eq 0 ] && [ -n "$practices" ]; then
+        log "Technology best practices retrieved for $technology"
+        echo "$practices" | jq -r '.results[]?.content' 2>/dev/null | head -n 5
+    else
+        warn "No expert practices found for $technology"
+    fi
 }
 
 # Check if coordinator is already running
@@ -155,6 +254,17 @@ health_check() {
         ((issues++))
     fi
     
+    # Check Expert Knowledge Base system
+    if [ "$EXPERT_SYSTEM_ENABLED" = "true" ]; then
+        if check_expert_system; then
+            log "Expert Knowledge Base: Available"
+        else
+            warn "Expert Knowledge Base: Unavailable (continuing without expert guidance)"
+        fi
+    else
+        info "Expert Knowledge Base: Disabled"
+    fi
+    
     if [ $issues -eq 0 ]; then
         log "All components healthy"
         return 0
@@ -203,6 +313,7 @@ run_daemon() {
     case $service_result in
         0)
             log "Redis coordination mode active"
+            log "Enhanced file building with Redis buffers enabled"
             ;;
         1)
             error "Failed to start required services"
@@ -210,7 +321,8 @@ run_daemon() {
             ;;
         2)
             warn "File-based coordination mode active"
-            warn "Limited functionality - no real-time coordination available"
+            warn "Limited functionality - using direct file I/O operations"
+            warn "Redis-enhanced file building disabled"
             ;;
     esac
     
@@ -354,12 +466,53 @@ main() {
         "recover")
             "$SCRIPT_DIR/work-recovery.sh" cycle
             ;;
+        "file-buffers")
+            "$SCRIPT_DIR/redis-file-builder.sh" list
+            ;;
+        "cleanup-buffers")
+            "$SCRIPT_DIR/redis-file-builder.sh" cleanup
+            ;;
+        "test-file-ops")
+            "$SCRIPT_DIR/workflow-file-ops.sh" test
+            ;;
+        "query-expert")
+            local query="${2:-}"
+            local domain="${3:-}"
+            if [ -z "$query" ]; then
+                error "Query required. Usage: $0 query-expert \"query text\" [domain]"
+                exit 1
+            fi
+            query_expert_system "$query" "$domain" 5 | jq '.' 2>/dev/null || echo "Query failed or no results found"
+            ;;
+        "get-guidance")
+            local task_type="${2:-deployment}"
+            local technology="${3:-}"
+            get_coordination_guidance "$task_type" "$technology"
+            ;;
+        "get-practices")
+            local technology="${2:-}"
+            if [ -z "$technology" ]; then
+                error "Technology required. Usage: $0 get-practices \"technology\""
+                exit 1
+            fi
+            get_technology_best_practices "$technology"
+            ;;
+        "expert-status")
+            if check_expert_system; then
+                echo -e "${GREEN}✓${NC} Expert Knowledge Base: Available"
+                curl -s "$EXPERT_SYSTEM_URL/api/v1/index/stats" | jq '.' 2>/dev/null || echo "Stats unavailable"
+            else
+                echo -e "${RED}✗${NC} Expert Knowledge Base: Unavailable"
+                echo "URL: $EXPERT_SYSTEM_URL"
+                echo "Enabled: $EXPERT_SYSTEM_ENABLED"
+            fi
+            ;;
         "help"|"-h"|"--help")
-            echo "Claude Workflow Coordinator"
+            echo "Claude Workflow Coordinator with Expert Knowledge Base Integration"
             echo ""
             echo "Usage: $0 [command]"
             echo ""
-            echo "Commands:"
+            echo "Core Coordination Commands:"
             echo "  start, daemon              Start coordinator in daemon mode (Redis required)"
             echo "  start-with-fallback        Start coordinator with file-based fallback option"
             echo "  daemon-with-fallback       Alias for start-with-fallback"
@@ -371,22 +524,37 @@ main() {
             echo "  status                     Show system status"
             echo "  health                     Run health check"
             echo "  recover                    Run work recovery cycle"
-            echo "  help                       Show this help message"
+            echo "  file-buffers               List active Redis file buffers"
+            echo "  cleanup-buffers            Clean up stale Redis file buffers"
+            echo "  test-file-ops              Test Redis-enhanced file operations"
+            echo ""
+            echo "Expert Knowledge Base Commands:"
+            echo "  query-expert \"query\" [domain]    Query Expert Knowledge Base"
+            echo "  get-guidance <task-type> [tech]   Get coordination guidance"
+            echo "  get-practices <technology>        Get technology best practices"
+            echo "  expert-status                     Check Expert Knowledge Base status"
             echo ""
             echo "Coordination Modes:"
             echo "  Redis Mode:                Full coordination with real-time work distribution"
-            echo "  File-based Fallback:       Limited coordination, may have race conditions"
+            echo "                             + Enhanced file building with Redis buffers"
+            echo "                             + Expert Knowledge Base integration"
+            echo "  File-based Fallback:       Limited coordination with direct file I/O"
+            echo "                             + Expert guidance when available"
             echo ""
             echo "Environment Variables:"
             echo "  REDIS_URL                  Redis connection URL (default: redis://localhost:6379)"
             echo "  RECOVERY_INTERVAL          Work recovery interval in seconds (default: 300)"
+            echo "  EXPERT_SYSTEM_URL          Expert Knowledge Base URL (default: http://localhost:8080)"
+            echo "  EXPERT_SYSTEM_ENABLED      Enable Expert Knowledge Base (default: true)"
             echo ""
             echo "Examples:"
             echo "  $0                                            # Start coordinator (Redis required)"
             echo "  $0 start-with-fallback                        # Start with fallback option"
-            echo "  $0 start-services                             # Start services only"
-            echo "  REDIS_URL=redis://custom:6379 $0 start       # Custom Redis URL"
-            echo "  RECOVERY_INTERVAL=600 $0 daemon               # 10-minute recovery interval"
+            echo "  $0 query-expert \"Go error handling\" go-expert  # Query expert system"
+            echo "  $0 get-guidance deployment docker            # Get deployment guidance"
+            echo "  $0 get-practices flutter                     # Get Flutter best practices"
+            echo "  $0 expert-status                             # Check expert system status"
+            echo "  EXPERT_SYSTEM_ENABLED=false $0 start         # Disable expert system"
             exit 0
             ;;
         *)

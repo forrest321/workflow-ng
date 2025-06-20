@@ -85,9 +85,18 @@ safe_copy() {
 echo "Creating .claude directory structure..."
 mkdir -p "$TARGET_DIR/.claude"/{config,coordination,scripts,templates,metrics,logs}
 
-# Copy configuration templates
+# Copy configuration templates to .claude directory (DO NOT overwrite project root CLAUDE.md)
 echo "Installing configuration templates..."
-safe_copy "$FRAMEWORK_DIR/CLAUDE.md" "$TARGET_DIR/" "CLAUDE.md configuration"
+safe_copy "$FRAMEWORK_DIR/CLAUDE.md" "$TARGET_DIR/.claude/" "CLAUDE.md configuration (to .claude directory)"
+
+# Safe CLAUDE.md integration
+echo "Handling CLAUDE.md integration..."
+if [[ -f "$FRAMEWORK_DIR/scripts/claude-md-integration.sh" ]]; then
+    "$FRAMEWORK_DIR/scripts/claude-md-integration.sh" auto "$TARGET_DIR" safe
+else
+    echo "⚠ CLAUDE.md integration script not found - skipping root CLAUDE.md modification"
+    echo "Framework documentation available in .claude/README.md"
+fi
 
 # Copy implementation guides
 echo "Installing implementation guides..."
@@ -97,6 +106,20 @@ safe_copy "$FRAMEWORK_DIR/IMPLEMENTATION_GUIDE.md" "$TARGET_DIR/.claude/" "imple
 # Copy essential scripts
 echo "Installing coordination scripts..."
 mkdir -p "$TARGET_DIR/.claude/scripts"
+
+# Copy enhanced coordination scripts
+safe_copy "$FRAMEWORK_DIR/scripts/workflow-coordinator.sh" "$TARGET_DIR/.claude/scripts/" "workflow coordinator"
+safe_copy "$FRAMEWORK_DIR/scripts/service-manager.sh" "$TARGET_DIR/.claude/scripts/" "service manager"
+safe_copy "$FRAMEWORK_DIR/scripts/work-recovery.sh" "$TARGET_DIR/.claude/scripts/" "work recovery"
+safe_copy "$FRAMEWORK_DIR/scripts/redis-file-builder.sh" "$TARGET_DIR/.claude/scripts/" "Redis file builder"
+safe_copy "$FRAMEWORK_DIR/scripts/workflow-file-ops.sh" "$TARGET_DIR/.claude/scripts/" "workflow file operations"
+safe_copy "$FRAMEWORK_DIR/scripts/expert-enhanced-planner.sh" "$TARGET_DIR/.claude/scripts/" "expert-enhanced planner"
+safe_copy "$FRAMEWORK_DIR/scripts/expert-guided-implementation.sh" "$TARGET_DIR/.claude/scripts/" "expert-guided implementation"
+safe_copy "$FRAMEWORK_DIR/scripts/expert-testing-deployment.sh" "$TARGET_DIR/.claude/scripts/" "expert testing and deployment"
+safe_copy "$FRAMEWORK_DIR/scripts/claude-md-integration.sh" "$TARGET_DIR/.claude/scripts/" "CLAUDE.md integration helper"
+
+# Make scripts executable
+chmod +x "$TARGET_DIR/.claude/scripts"/*.sh 2>/dev/null || true
 
 # Create coordination setup script
 cat > "$TARGET_DIR/.claude/scripts/setup-coordination.sh" << 'EOF'
@@ -533,12 +556,26 @@ EOF
 echo ""
 echo "✓ Claude Workflow Framework installed successfully!"
 echo ""
+echo "🔒 CLAUDE.md Protection: Existing CLAUDE.md files are preserved!"
+echo "   - Framework content stored in .claude/CLAUDE.md"
+echo "   - Project root CLAUDE.md left untouched for /init compatibility"
+echo ""
+echo "Framework includes enhanced Redis-based file building and Expert Knowledge Base integration!"
+echo ""
 echo "Next steps:"
 echo "1. cd $TARGET_DIR"
 echo "2. ./.claude/scripts/setup-coordination.sh"
 echo "3. source .claude/scripts/coordination-utils.sh"
 echo ""
-echo "Optional (for Redis coordination):"
+echo "For enhanced coordination with Expert system:"
 echo "4. docker-compose -f docker-compose.coordination.yml up -d"
+echo "5. ./.claude/scripts/workflow-coordinator.sh start-with-fallback"
+echo ""
+echo "Test Expert system integration:"
+echo "6. ./.claude/scripts/workflow-coordinator.sh expert-status"
+echo "7. ./.claude/scripts/expert-enhanced-planner.sh detect"
+echo ""
+echo "If you want to integrate framework content into your CLAUDE.md:"
+echo "8. ./.claude/scripts/claude-md-integration.sh integrate $TARGET_DIR"
 echo ""
 echo "For help: cat .claude/README.md"

@@ -26,6 +26,14 @@ The repository is organized into specialized directories, each serving a specifi
 
 ## Enhanced Workflow Features
 
+### Expert Knowledge Base Integration
+- **Real-Time Expert Consultation**: Access to 85,000+ expert knowledge chunks across 73 domains
+- **Context-Aware Guidance**: Technology-specific recommendations for planning, implementation, testing, and deployment
+- **Intelligent Planning**: Expert-guided project analysis and task breakdown
+- **Implementation Assistance**: Code patterns, security practices, and performance optimization guidance
+- **Testing Strategy**: Framework-specific testing recommendations and automation guidance
+- **Deployment Intelligence**: Environment-aware deployment strategies and CI/CD best practices
+
 ### Automated Service Management
 - **Auto-Start Detection**: First worker automatically detects missing Redis/Docker and attempts startup
 - **Graceful Degradation**: Falls back to file-based coordination if Redis unavailable
@@ -38,18 +46,66 @@ The repository is organized into specialized directories, each serving a specifi
 - **Stale Agent Cleanup**: Detection and cleanup of unresponsive worker instances
 - **Multi-Mode Recovery**: Supports both Redis-based and file-based recovery mechanisms
 
-### Workflow Coordination Scripts
+### Expert-Enhanced Workflow Scripts
+- `scripts/workflow-coordinator.sh` - Main coordination daemon with Expert system integration
+- `scripts/expert-enhanced-planner.sh` - AI-powered project planning and analysis
+- `scripts/expert-guided-implementation.sh` - Context-aware development assistance
+- `scripts/expert-testing-deployment.sh` - Intelligent testing and deployment guidance
 - `scripts/service-manager.sh` - Service dependency management and auto-start
-- `scripts/work-recovery.sh` - Orphaned work detection and recovery  
-- `scripts/workflow-coordinator.sh` - Main coordination daemon
+- `scripts/work-recovery.sh` - Orphaned work detection and recovery
+- `scripts/redis-file-builder.sh` - Redis-based file building system
+- `scripts/workflow-file-ops.sh` - Enhanced file operations with Redis buffers
+
+### Redis-Enhanced File Building
+- **In-Memory File Construction**: Build files in Redis before committing to disk to eliminate I/O bottlenecks
+- **Atomic File Operations**: All file edits are atomic with Redis string operations and locks
+- **File Locking System**: Prevents concurrent file modifications with TTL-based locks
+- **Smart Fallback**: Automatically falls back to direct file I/O when Redis unavailable
+- **Incremental Building**: Support for multiple edit operations before final commit
+- **Base64 Binary Support**: Handles both text and binary files safely
 
 ### User-Controlled Fallback
 - **No Automatic Fallback**: System requires explicit user consent before falling back to file-based coordination
 - **Clear Warnings**: Users are informed of limitations when Redis coordination is unavailable
 - **Explicit Commands**: Use `start-with-fallback` commands to enable fallback mode with user prompts
 
+## Expert System Usage Examples
+
+### Quick Commands
+```bash
+# Check Expert system status
+./scripts/workflow-coordinator.sh expert-status
+
+# Query for specific technology guidance
+./scripts/workflow-coordinator.sh query-expert "Go error handling best practices" go-expert
+
+# Get project planning guidance
+./scripts/expert-enhanced-planner.sh plan "REST API for user management"
+
+# Get implementation guidance
+./scripts/expert-guided-implementation.sh guide "authentication system" "go"
+
+# Generate testing plan
+./scripts/expert-testing-deployment.sh test-plan "microservice API" "go postgresql"
+```
+
+### Workflow Integration
+The Expert Knowledge Base is automatically consulted during:
+- **Project Analysis**: Technology detection and complexity assessment
+- **Planning Phase**: Architecture and implementation strategy recommendations  
+- **Development**: Code patterns, security practices, and optimization guidance
+- **Testing**: Framework selection and strategy recommendations
+- **Deployment**: Environment-specific deployment and monitoring guidance
+
+### Configuration
+Expert system integration is controlled by environment variables:
+- `EXPERT_SYSTEM_URL`: Expert Knowledge Base URL (default: http://localhost:8080)
+- `EXPERT_SYSTEM_ENABLED`: Enable/disable Expert integration (default: true)
+
 ## Known Limitations (Resolved)
 
 - ~~File-based working system can lead to race conditions and duplicate work~~ ✅ **RESOLVED**: Enhanced with atomic operations and TTL-based claims
 - ~~System needs migration to a faster, high-throughput solution like Redis for better coordination~~ ✅ **RESOLVED**: Redis coordination implemented with auto-start
 - ~~Work claiming mechanism requires real-time updates to prevent misguided instances from duplicating effort~~ ✅ **RESOLVED**: Real-time heartbeat system and stale claim detection
+- ~~File I/O bottlenecks during editing reduce worker efficiency~~ ✅ **RESOLVED**: Redis-based file building eliminates disk I/O during edit operations
+- ~~Lack of domain-specific expertise guidance during development~~ ✅ **RESOLVED**: Expert Knowledge Base integration provides real-time access to 73 expert domains
