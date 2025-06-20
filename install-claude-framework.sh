@@ -251,6 +251,7 @@ main() {
     copy_file "$SCRIPT_DIR/CLAUDE.md" "$TARGET_DIR/.claude/CLAUDE.md" "CLAUDE.md (to .claude directory)"
     copy_file "$SCRIPT_DIR/CLAUDE_COORDINATION_PLAN.md" "$TARGET_DIR/.claude/CLAUDE_COORDINATION_PLAN.md" "Coordination Plan"
     copy_file "$SCRIPT_DIR/IMPLEMENTATION_GUIDE.md" "$TARGET_DIR/.claude/IMPLEMENTATION_GUIDE.md" "Implementation Guide"
+    copy_file "$SCRIPT_DIR/EXPERT_QUICK_REFERENCE.md" "$TARGET_DIR/.claude/EXPERT_QUICK_REFERENCE.md" "Expert System Quick Reference"
     
     # Safe CLAUDE.md integration
     log "Handling CLAUDE.md integration..."
@@ -1143,9 +1144,14 @@ EOF
 # Create README
 create_readme() {
     cat > "$TARGET_DIR/.claude/README.md" << 'EOF'
-# Claude Workflow Framework
+# Claude Workflow Framework with Expert Knowledge Base
 
-This project has been configured with the Claude Workflow Framework for improved coordination between multiple Claude Code instances.
+This project has been configured with the Claude Workflow Framework for improved coordination between multiple Claude Code instances, featuring:
+
+- **🧠 Expert Knowledge Base**: 85,000+ expert knowledge chunks across 73 specialized domains
+- **⚡ Redis-Enhanced File Building**: In-memory file operations with atomic locks
+- **🔄 Zero-Conflict Coordination**: Sub-second task claiming with automatic recovery
+- **🎯 AI-Guided Development**: Context-aware recommendations for planning through deployment
 
 ## Quick Start
 
@@ -1154,19 +1160,42 @@ This project has been configured with the Claude Workflow Framework for improved
    source .claude/scripts/activate.sh
    ```
 
-2. **Check status**:
+2. **Check status and Expert system**:
    ```bash
    claude-status
+   claude-coordinator expert-status
    ```
 
-3. **Start Redis coordination** (optional but recommended):
+3. **Start Expert-enhanced coordination** (recommended):
+   ```bash
+   claude-coordinator start-with-fallback
+   ```
+
+4. **Or start Redis services manually**:
    ```bash
    docker-compose -f docker-compose.coordination.yml up -d
    ```
 
-## Available Commands
+## Expert Knowledge Base Commands
 
-After activation, these commands are available:
+After activation, these Expert system commands are available:
+
+### Quick Expert Consultation
+- `claude-coordinator query-expert "query" [domain]` - Direct Expert Knowledge Base queries
+- `claude-coordinator get-guidance <task-type> [tech]` - Get coordination guidance
+- `claude-coordinator get-practices <technology>` - Get technology best practices
+
+### Expert-Guided Workflows
+- `.claude/scripts/expert-enhanced-planner.sh plan "project description"` - AI-powered project planning
+- `.claude/scripts/expert-guided-implementation.sh guide "feature" "tech"` - Implementation guidance
+- `.claude/scripts/expert-testing-deployment.sh test-plan "project" "stack"` - Testing strategies
+
+### Redis-Enhanced File Operations
+- `claude-coordinator test-file-ops` - Test Redis file building
+- `claude-coordinator file-buffers` - View active file buffers
+- `claude-coordinator cleanup-buffers` - Clean up stale buffers
+
+## Basic Coordination Commands
 
 - `claude-claim <task-id>` - Claim a task for exclusive work
 - `claude-release <task-id>` - Release a claimed task
@@ -1196,14 +1225,37 @@ After activation, these commands are available:
 └── logs/                   # Operation logs
 ```
 
+## Expert Domains Available
+
+The framework provides access to 73 specialized expert domains:
+
+### Programming Languages (13)
+JavaScript, TypeScript, Go, Rust, Java, Ruby, PHP, Swift, Kotlin, Scala, Haskell, Elixir, Lua
+
+### Frameworks & Technologies
+- `fibrebeam` (Go Fiber), `flutterbeam` (Flutter/Dart)
+- REST API, GraphQL, Spring Boot, Rails, PWA, HTML5
+
+### Infrastructure & DevOps (7)
+Docker, Kubernetes, Terraform, Ansible, Linux, Ubuntu, Deployment
+
+### Databases (5)
+General database design, MySQL, PostgreSQL, SQL, Firebase
+
+### Development Tools (9)
+Git, GitHub API, CLI tools, Security, Code review, Project management
+
+**📚 Quick Reference**: See `EXPERT_QUICK_REFERENCE.md` for complete domain list and usage examples.
+
 ## Configuration
 
 The workflow configuration is stored in `.claude/config/workflow.{json,yml}` and includes:
 
 - **Coordination mode**: Redis (recommended) or file-based
-- **Task definitions**: Common project tasks
-- **Quality gates**: Pre-commit, pre-merge, and pre-deploy checks
-- **Agent settings**: Concurrency limits and specializations
+- **Expert system integration**: Enabled by default with auto-consultation
+- **Task definitions**: Common project tasks with Expert guidance
+- **Quality gates**: Pre-commit, pre-merge, and pre-deploy checks with Expert recommendations
+- **Agent settings**: Concurrency limits and Expert domain specializations
 
 ## Task Coordination
 

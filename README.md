@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
-Transform your Claude Code development from single-instance limitations to coordinated multi-agent workflows. workflow-ng eliminates race conditions, prevents duplicate work, and enables seamless collaboration between multiple Claude Code instances.
+Transform your Claude Code development from single-instance limitations to coordinated multi-agent workflows with Expert Knowledge Base integration. workflow-ng eliminates race conditions, prevents duplicate work, and enables seamless collaboration between multiple Claude Code instances with real-time access to 85,000+ expert knowledge chunks across 73 specialized domains.
 
 ## 🚀 Quick Start
 
@@ -14,20 +14,50 @@ Transform your Claude Code development from single-instance limitations to coord
 git clone https://github.com/forrest321/workflow-ng.git
 cd workflow-ng
 
-# Initialize in your project
-cp -r . /path/to/your/project/.workflow-ng
+# Install in your project (safe - preserves existing CLAUDE.md)
+./install-framework.sh /path/to/your/project
+
+# Activate framework in your project
 cd /path/to/your/project
+source .claude/scripts/activate.sh
 
-# Quick setup (with Redis - recommended)
-docker run -d --name claude-coordinator -p 6379:6379 redis:7-alpine
-python .workflow-ng/scripts/claude-init.py
+# Start Expert-enhanced coordination (recommended)
+claude-coordinator start-with-fallback
 
-# Or use file-based coordination (fallback)
-export CLAUDE_COORDINATION_MODE=file
-python .workflow-ng/scripts/claude-init.py
+# Or start Redis services manually
+docker-compose -f docker-compose.coordination.yml up -d
+```
+
+### Expert Knowledge Base Quick Test
+```bash
+# Check Expert system status
+claude-coordinator expert-status
+
+# Get project planning guidance
+.claude/scripts/expert-enhanced-planner.sh plan "your project description"
+
+# Get implementation guidance
+.claude/scripts/expert-guided-implementation.sh guide "feature description" "technology"
+
+# Generate testing strategy
+.claude/scripts/expert-testing-deployment.sh test-plan "project" "tech stack"
 ```
 
 ## ✨ Key Features
+
+### 🧠 **Expert Knowledge Base Integration**
+- **85,000+ expert knowledge chunks** across 73 specialized domains
+- **Real-time AI consultation** for planning, implementation, testing, and deployment
+- **Technology-specific guidance** for all major programming languages and frameworks
+- **Context-aware recommendations** with sub-second semantic search
+- **Intelligent code review** and security vulnerability detection
+
+### ⚡ **Redis-Enhanced File Building**
+- **In-memory file construction** eliminates I/O bottlenecks during editing
+- **Atomic file operations** with Redis string operations and TTL-based locks
+- **Incremental building** supports multiple edit operations before final commit
+- **Smart fallback** to direct file I/O when Redis unavailable
+- **Binary file support** with Base64 encoding for all file types
 
 ### 🔄 **Zero-Conflict Coordination**
 - **95% reduction** in duplicate work across Claude instances
@@ -35,23 +65,23 @@ python .workflow-ng/scripts/claude-init.py
 - **Real-time coordination** using Redis or file-based fallback
 - **Automatic failure recovery** with heartbeat monitoring
 
-### 🎯 **Intelligent Task Management**
-- **Priority-based queues** with skill-based routing
-- **Dynamic load balancing** across available agents
-- **Dependency resolution** and workflow orchestration
-- **Progress tracking** with real-time status updates
+### 🎯 **Expert-Guided Task Management**
+- **Priority-based queues** with Expert-informed skill routing
+- **Technology-aware load balancing** using Expert domain knowledge
+- **AI-enhanced dependency resolution** and workflow orchestration
+- **Progress tracking** with Expert recommendations and real-time status
 
 ### 🏗️ **Enterprise-Ready Architecture**
-- **Multi-platform support** (Node.js, Python, Go, Rust)
+- **Multi-platform support** (Node.js, Python, Go, Rust, Flutter, etc.)
 - **Scalable infrastructure** with auto-scaling policies
 - **Comprehensive monitoring** dashboards and alerting
-- **Security-first** design with encryption and access controls
+- **Security-first** design with Expert security guidance
 
-### 🔧 **Developer Experience**
-- **Tech-agnostic** patterns for any development stack
-- **Rich documentation** with implementation examples
-- **Terminal UI** for real-time coordination visibility
-- **Quality gates** integration with testing and CI/CD
+### 🔧 **Enhanced Developer Experience**
+- **Expert-enhanced planning** with technology detection and complexity analysis
+- **Context-aware implementation** guidance with code patterns and best practices
+- **Intelligent testing strategies** with framework-specific recommendations
+- **Smart deployment guidance** with environment-aware strategies
 
 ## 🏛️ Architecture Overview
 
@@ -63,17 +93,27 @@ graph TB
     
     C --> E[Redis Coordinator]
     C --> F[File-based Fallback]
+    C --> X[Expert Knowledge Base]
     
-    C --> G[Task Queue]
+    C --> G[Expert-Enhanced Task Queue]
     C --> H[Agent Registry]
     C --> I[Progress Tracker]
+    C --> Y[Redis File Builder]
     
-    G --> J[Development Tasks]
-    G --> K[Testing Tasks]
-    G --> L[Review Tasks]
+    X --> Z[85,000+ Expert Chunks]
+    X --> AA[73 Specialized Domains]
+    
+    G --> J[Planning Tasks + Expert Guidance]
+    G --> K[Implementation + Code Patterns]
+    G --> L[Testing + Framework Recommendations]
+    G --> LL[Deployment + Infrastructure Guidance]
+    
+    Y --> MM[In-Memory File Construction]
+    Y --> NN[Atomic Operations]
     
     M[Dashboard] --> C
     N[Metrics] --> C
+    O[Expert Consultation] --> X
 ```
 
 ## 📋 Framework Components
@@ -96,27 +136,45 @@ graph TB
 
 ## 🛠️ Use Cases
 
-### Large-Scale Development
+### Expert-Guided Large-Scale Development
 ```bash
-# Coordinate multiple Claude instances on a microservices project
-claude-coord assign --task "refactor-user-service" --agents 3
-claude-coord assign --task "update-tests" --skill testing
-claude-coord assign --task "review-changes" --skill review
+# Get Expert-guided planning for microservices architecture
+.claude/scripts/expert-enhanced-planner.sh plan "microservices e-commerce platform"
+
+# Coordinate with Expert recommendations
+claude-coordinator start-with-fallback
+claude-claim refactor-user-service  # Gets Go/microservices best practices
+claude-claim update-tests          # Gets testing framework recommendations
+claude-claim security-review       # Gets security vulnerability guidance
 ```
 
-### Parallel Feature Development
+### Intelligent Feature Development
 ```bash
-# Each Claude instance works on different features simultaneously
-claude-coord create-workspace --feature "payment-integration"
-claude-coord create-workspace --feature "user-dashboard" 
-claude-coord create-workspace --feature "admin-panel"
+# Expert-guided feature planning and implementation
+.claude/scripts/expert-guided-implementation.sh plan "payment-integration" "go stripe"
+.claude/scripts/expert-guided-implementation.sh security "payment-processing" "go"
+
+# Technology-specific guidance during development
+claude-coordinator query-expert "Go error handling patterns" go-expert
+claude-coordinator get-practices flutter  # For mobile features
 ```
 
-### Automated Quality Assurance
+### AI-Enhanced Quality Assurance
 ```bash
-# Automatic coordination of testing and review workflows
-claude-coord pipeline --stages "lint,test,security,review,deploy"
-claude-coord monitor --dashboard --real-time
+# Expert testing strategies and deployment guidance
+.claude/scripts/expert-testing-deployment.sh test-plan "microservice API" "go postgresql"
+.claude/scripts/expert-testing-deployment.sh deploy-plan "web service" "go kubernetes" production
+
+# Automated coordination with Expert recommendations
+claude-coordinator start  # Includes Expert guidance in task distribution
+```
+
+### Redis-Enhanced File Operations
+```bash
+# High-performance file building with Redis
+claude-coordinator test-file-ops    # Test Redis file operations
+claude-coordinator file-buffers     # View active file buffers
+claude-coordinator cleanup-buffers  # Clean stale buffers
 ```
 
 ## 📊 Performance Benefits
@@ -125,18 +183,29 @@ claude-coord monitor --dashboard --real-time
 |--------|-------------------|-------------------|
 | **Duplicate Work** | ~40% overlap | <5% overlap |
 | **Task Claiming Speed** | 5-15 seconds | <500ms |
-| **Coordination Overhead** | Manual intervention | Fully automated |
+| **Expert Consultation** | Manual research | Sub-second semantic search |
+| **File I/O Bottlenecks** | Disk-based editing | Redis in-memory operations |
+| **Technology Guidance** | Generic patterns | 73 specialized expert domains |
+| **Code Quality** | Manual review | AI-powered Expert analysis |
+| **Coordination Overhead** | Manual intervention | Fully automated with Expert guidance |
 | **Failure Recovery** | Manual restart | Automatic failover |
-| **Development Velocity** | Single-threaded | Parallel execution |
+| **Development Velocity** | Single-threaded | Expert-enhanced parallel execution |
 
 ## 🔧 Configuration Examples
 
-### Node.js Project
+### Node.js Project with Expert Integration
 ```yaml
 # .claude/config/workflow.yml
 coordination:
   mode: redis
   fallback: file
+  redis_url: "redis://localhost:6379"
+
+# Expert Knowledge Base integration
+expert_system:
+  enabled: true
+  url: "http://localhost:8080"
+  auto_consultation: true
 
 tasks:
   test: "npm test"
@@ -145,18 +214,26 @@ tasks:
   type_check: "npm run type-check"
 
 agents:
-  specializations: ["frontend", "backend", "testing"]
+  specializations: ["frontend", "backend", "testing", "javascript-expert"]
+  expert_domains: ["javascript-expert", "rest-api-expert", "security-expert"]
 
 quality_gates:
   pre_commit: ["lint", "type_check", "test"]
   pre_merge: ["build", "integration_test"]
+  expert_guidance: ["security", "performance", "best_practices"]
 ```
 
-### Python Project
+### Python Project with Expert Domains
 ```yaml
 # .claude/config/workflow.yml
 coordination:
   mode: redis
+  expert_enhanced: true
+  
+# Expert system configuration
+expert_system:
+  enabled: true
+  domains: ["python-expert", "database-expert", "security-expert"]
   
 tasks:
   test: "pytest"
@@ -167,6 +244,24 @@ tasks:
 
 agents:
   specializations: ["api", "data", "ml", "testing"]
+  expert_consultation: true
+
+# Redis file building configuration
+redis_file_building:
+  enabled: true
+  buffer_ttl: 300
+  max_buffer_size: "10MB"
+```
+
+### Environment Variables
+```bash
+# Expert Knowledge Base
+export EXPERT_SYSTEM_URL="http://localhost:8080"
+export EXPERT_SYSTEM_ENABLED="true"
+
+# Redis coordination and file building
+export REDIS_URL="redis://localhost:6379"
+export RECOVERY_INTERVAL="300"
 ```
 
 ## 📈 Monitoring & Dashboards
