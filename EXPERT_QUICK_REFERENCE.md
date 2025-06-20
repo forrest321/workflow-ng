@@ -18,40 +18,40 @@ curl -s "http://localhost:8080/api/v1/index/stats" | jq .
 ### Planning Phase
 ```bash
 # Detect project technologies
-.claude/scripts/expert-enhanced-planner.sh detect
+./scripts/expert-enhanced-planner.sh detect
 
 # Generate comprehensive project plan
-.claude/scripts/expert-enhanced-planner.sh plan "REST API for e-commerce"
+./scripts/expert-enhanced-planner.sh plan "REST API for e-commerce"
 
 # Get architecture guidance
-.claude/scripts/expert-enhanced-planner.sh architecture "microservice" "go docker"
+./scripts/expert-enhanced-planner.sh architecture "microservice" "go docker"
 ```
 
 ### Implementation Phase
 ```bash
 # Get implementation guidance
-.claude/scripts/expert-guided-implementation.sh guide "authentication" "go"
+./scripts/expert-guided-implementation.sh guide "authentication" "go"
 
 # API design recommendations
-.claude/scripts/expert-guided-implementation.sh api "REST" "javascript"
+./scripts/expert-guided-implementation.sh api "REST" "javascript"
 
 # Security guidance
-.claude/scripts/expert-guided-implementation.sh security "web app" "node.js"
+./scripts/expert-guided-implementation.sh security "web app" "node.js"
 
 # Performance optimization
-.claude/scripts/expert-guided-implementation.sh performance "database" "postgresql"
+./scripts/expert-guided-implementation.sh performance "database" "postgresql"
 ```
 
 ### Testing & Deployment
 ```bash
 # Generate testing strategy
-.claude/scripts/expert-testing-deployment.sh test-plan "API service" "go postgresql"
+./scripts/expert-testing-deployment.sh test-plan "API service" "go postgresql"
 
 # Get CI/CD guidance
-.claude/scripts/expert-testing-deployment.sh cicd "python flask" github
+./scripts/expert-testing-deployment.sh cicd "python flask" github
 
 # Deployment recommendations
-.claude/scripts/expert-testing-deployment.sh deploy-plan "web service" "go kubernetes" production
+./scripts/expert-testing-deployment.sh deploy-plan "web service" "go kubernetes" production
 ```
 
 ### Direct Expert Queries

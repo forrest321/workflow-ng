@@ -17,12 +17,12 @@ cd workflow-ng
 # Install in your project (safe - preserves existing CLAUDE.md)
 ./install-framework.sh /path/to/your/project
 
-# Activate framework in your project
+# Use framework in your project
 cd /path/to/your/project
-source .claude/scripts/activate.sh
+# Framework is ready to use - no activation script needed
 
 # Start Expert-enhanced coordination (recommended)
-claude-coordinator start-with-fallback
+./scripts/workflow-coordinator.sh start-with-fallback
 
 # Or start Redis services manually
 docker-compose -f docker-compose.coordination.yml up -d
@@ -31,16 +31,16 @@ docker-compose -f docker-compose.coordination.yml up -d
 ### Expert Knowledge Base Quick Test
 ```bash
 # Check Expert system status
-claude-coordinator expert-status
+./scripts/workflow-coordinator.sh expert-status
 
 # Get project planning guidance
-.claude/scripts/expert-enhanced-planner.sh plan "your project description"
+./scripts/expert-enhanced-planner.sh plan "your project description"
 
 # Get implementation guidance
-.claude/scripts/expert-guided-implementation.sh guide "feature description" "technology"
+./scripts/expert-guided-implementation.sh guide "feature description" "technology"
 
 # Generate testing strategy
-.claude/scripts/expert-testing-deployment.sh test-plan "project" "tech stack"
+./scripts/expert-testing-deployment.sh test-plan "project" "tech stack"
 ```
 
 ## ✨ Key Features
@@ -142,7 +142,7 @@ graph TB
 .claude/scripts/expert-enhanced-planner.sh plan "microservices e-commerce platform"
 
 # Coordinate with Expert recommendations
-claude-coordinator start-with-fallback
+./scripts/workflow-coordinator.sh start-with-fallback
 claude-claim refactor-user-service  # Gets Go/microservices best practices
 claude-claim update-tests          # Gets testing framework recommendations
 claude-claim security-review       # Gets security vulnerability guidance
@@ -151,30 +151,30 @@ claude-claim security-review       # Gets security vulnerability guidance
 ### Intelligent Feature Development
 ```bash
 # Expert-guided feature planning and implementation
-.claude/scripts/expert-guided-implementation.sh plan "payment-integration" "go stripe"
-.claude/scripts/expert-guided-implementation.sh security "payment-processing" "go"
+./scripts/expert-guided-implementation.sh plan "payment-integration" "go stripe"
+./scripts/expert-guided-implementation.sh security "payment-processing" "go"
 
 # Technology-specific guidance during development
-claude-coordinator query-expert "Go error handling patterns" go-expert
-claude-coordinator get-practices flutter  # For mobile features
+./scripts/workflow-coordinator.sh query-expert "Go error handling patterns" go-expert
+./scripts/workflow-coordinator.sh get-practices flutter  # For mobile features
 ```
 
 ### AI-Enhanced Quality Assurance
 ```bash
 # Expert testing strategies and deployment guidance
-.claude/scripts/expert-testing-deployment.sh test-plan "microservice API" "go postgresql"
-.claude/scripts/expert-testing-deployment.sh deploy-plan "web service" "go kubernetes" production
+./scripts/expert-testing-deployment.sh test-plan "microservice API" "go postgresql"
+./scripts/expert-testing-deployment.sh deploy-plan "web service" "go kubernetes" production
 
 # Automated coordination with Expert recommendations
-claude-coordinator start  # Includes Expert guidance in task distribution
+./scripts/workflow-coordinator.sh start  # Includes Expert guidance in task distribution
 ```
 
 ### Redis-Enhanced File Operations
 ```bash
 # High-performance file building with Redis
-claude-coordinator test-file-ops    # Test Redis file operations
-claude-coordinator file-buffers     # View active file buffers
-claude-coordinator cleanup-buffers  # Clean stale buffers
+./scripts/workflow-coordinator.sh test-file-ops    # Test Redis file operations
+./scripts/workflow-coordinator.sh file-buffers     # View active file buffers
+./scripts/workflow-coordinator.sh cleanup-buffers  # Clean stale buffers
 ```
 
 ## 📊 Performance Benefits
